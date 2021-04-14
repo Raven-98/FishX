@@ -453,12 +453,12 @@ class AboutProgramDialog(QtWidgets.QDialog):
         labelAbout = QtWidgets.QLabel("Analysis of diffraction digital data")
         labelAbout.setWordWrap(True)
         labelAboutOwner = QtWidgets.QLabel("<html><head/><body><p>© Raven-98, 2021</p></body></html>")
-        # labelAboutWEB = QtWidgets.QLabel("<html><head/><body><p><a href=\"https://github.com/Raven-98/stress-strain_diagram_builder.git\"><span style=\" text-decoration: underline; color:#2980b9;\">https://github.com/Raven-98/stress-strain_diagram_builder.git</span></a></p></body></html>")
+        labelAboutWEB = QtWidgets.QLabel("<html><head/><body><p><a href=\"https://github.com/Raven-98/FishX\"><span style=\" text-decoration: underline; color:#2980b9;\">https://github.com/Raven-98/FishX</span></a></p></body></html>")
         labelAboutLicense = QtWidgets.QLabel("<html><head/><body><p>License: GNU General Public License v3.0</p><p><a href=\"http://www.gnu.org/licenses/gpl-3.0.html\"><span style=\" text-decoration: underline; color:#2980b9;\">http://www.gnu.org/licenses/gpl-3.0.html</span></a></p></body></html>")
         boxLayoutAbout = QtWidgets.QVBoxLayout()
         boxLayoutAbout.addWidget(labelAbout)
         boxLayoutAbout.addWidget(labelAboutOwner)
-        # boxLayoutAbout.addWidget(labelAboutWEB)
+        boxLayoutAbout.addWidget(labelAboutWEB)
         boxLayoutAbout.addWidget(labelAboutLicense)
         tabAbout.setLayout(boxLayoutAbout)
         tabsWidget.addTab(tabAbout, "About")
@@ -770,12 +770,17 @@ class FishThread(QtCore.QObject):
 def main():
     app = QtWidgets.QApplication(sys.argv)
 
+    splash = QtWidgets.QSplashScreen(QtGui.QPixmap(PROGRAM_PATH + "/img/FishX-SS.png"))
+    splash.show()
+
     app.setApplicationName("FishX")
-    app.setApplicationVersion("1.0.0")
+    app.setApplicationVersion("1.0.1")
     app.setWindowIcon(QtGui.QIcon(PROGRAM_PATH + "/img/FishX.png"))
 
     win = MainWindow()
     win.show()
+
+    splash.finish(win)
 
     ####
     win.slot_openFile()
