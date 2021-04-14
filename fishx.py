@@ -450,7 +450,7 @@ class AboutProgramDialog(QtWidgets.QDialog):
         tabsWidget = QtWidgets.QTabWidget()
 
         tabAbout = QtWidgets.QWidget()
-        labelAbout = QtWidgets.QLabel("Analysis of diffraction digital data")
+        labelAbout = QtWidgets.QLabel("Analysis of diffraction data of a digital multimeter")
         labelAbout.setWordWrap(True)
         labelAboutOwner = QtWidgets.QLabel("<html><head/><body><p>© Raven-98, 2021</p></body></html>")
         labelAboutWEB = QtWidgets.QLabel("<html><head/><body><p><a href=\"https://github.com/Raven-98/FishX\"><span style=\" text-decoration: underline; color:#2980b9;\">https://github.com/Raven-98/FishX</span></a></p></body></html>")
@@ -774,7 +774,7 @@ def main():
     splash.show()
 
     app.setApplicationName("FishX")
-    app.setApplicationVersion("1.0.1")
+    app.setApplicationVersion("1.0.1-1")
     app.setWindowIcon(QtGui.QIcon(PROGRAM_PATH + "/img/FishX.png"))
 
     win = MainWindow()

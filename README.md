@@ -1,6 +1,6 @@
 # FishX
 
-Analysis of diffraction digital data
+Analysis of diffraction data of a digital multimeter
 
 The following libraries are required to use this script:
 
