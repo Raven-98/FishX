@@ -59,6 +59,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.actionSaveTables.setIcon(QtGui.QIcon(PROGRAM_PATH + "/img/save_tables.png"))
         self.actionSaveTables.triggered.connect(self.slot_SaveTables)
 
+        self.actionOpenTable = QtWidgets.QAction("Open table")
+        self.actionOpenTable.setIcon(QtGui.QIcon(PROGRAM_PATH + "/img/open_table.png"))
+        self.actionOpenTable.triggered.connect(self.slot_openTable)
+
+        self.menuTable.addAction(self.actionOpenTable)
+        self.menuTable.addSeparator()
         self.menuTable.addAction(self.actionSaveTable)
         self.menuTable.addAction(self.actionSaveTables)
 
@@ -72,6 +78,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.actionSavePlots.setIcon(QtGui.QIcon(PROGRAM_PATH + "/img/save_graphs.png"))
         self.actionSavePlots.triggered.connect(self.slot_SavePlots)
 
+        self.actionBuildSubPlots = QtWidgets.QAction("Build subplots")
+        self.actionBuildSubPlots.setIcon(QtGui.QIcon(PROGRAM_PATH + "/img/subplots.png"))
+        self.actionBuildSubPlots.triggered.connect(self.slot_BuildSubPlots)
+
+        self.menuPlot.addAction(self.actionBuildSubPlots)
+        self.menuPlot.addSeparator()
         self.menuPlot.addAction(self.actionSavePlot)
         self.menuPlot.addAction(self.actionSavePlots)
 
@@ -94,9 +106,11 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.toolBar.addAction(self.actionOpenFile)
         self.toolBar.addSeparator()
+        self.toolBar.addAction(self.actionOpenTable)
         self.toolBar.addAction(self.actionSaveTable)
         self.toolBar.addAction(self.actionSaveTables)
         self.toolBar.addSeparator()
+        self.toolBar.addAction(self.actionBuildSubPlots)
         self.toolBar.addAction(self.actionSavePlot)
         self.toolBar.addAction(self.actionSavePlots)
 
@@ -108,7 +122,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def closeEvent(self, event):
         event.ignore()
-        if QtWidgets.QMessageBox.Yes == QtWidgets.QMessageBox.question(self, "", "Exit?", QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No):
+        if QtWidgets.QMessageBox.Yes == QtWidgets.QMessageBox.question(self, "Exit", "Exit?", QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No):
             event.accept()
 
     @QtCore.Slot()
@@ -128,7 +142,7 @@ class MainWindow(QtWidgets.QMainWindow):
         dialogOpenFile = DialogOpenFile(self)
         vivisection = dialogOpenFile.exec()
         if vivisection == QtWidgets.QDialog.Accepted:
-            self.addTable(dialogOpenFile.getInput())
+            self.addTable(dialogOpenFile.getInput(),'f')
         elif vivisection == QtWidgets.QDialog.Rejected:
             pass
         else:
@@ -159,6 +173,17 @@ class MainWindow(QtWidgets.QMainWindow):
         vivisection = dialogSave.exec()
         if vivisection == QtWidgets.QDialog.Accepted:
             self.SaveSerialFunc(dialogSave.getInput())
+        elif vivisection == QtWidgets.QDialog.Rejected:
+            pass
+        else:
+            QtWidgets.QMessageBox.critical(self, "Critical error", "QDialog: Unexpected result")
+
+    @QtCore.Slot()
+    def slot_openTable(self):
+        dialog = DialogOpenTable(self)
+        vivisection = dialog.exec()
+        if vivisection == QtWidgets.QDialog.Accepted:
+            self.addTable(dialog.getInput(),'t')
         elif vivisection == QtWidgets.QDialog.Rejected:
             pass
         else:
@@ -202,7 +227,11 @@ class MainWindow(QtWidgets.QMainWindow):
                 currentWindow = it_wl
                 break
         try:
-            currentWindow.widget().Save(lst[1])
+            w = currentWindow.widget()
+            if w.metaObject().className() == "TableWidget":
+                w.Save(lst[1],lst[2])
+            else:
+                w.Save(lst[1])
         except Exception:
             QtWidgets.QMessageBox.critical(self, "Error", traceback.format_exc())
         else:
@@ -217,11 +246,26 @@ class MainWindow(QtWidgets.QMainWindow):
                     currentWindow = it_wl
                     break
             try:
-                currentWindow.widget().Save(lst[0] + it_lst + lst[2])
+                currentWindow.widget().Save(lst[0] + it_lst + lst[2],lst[3])
             except Exception:
                 QtWidgets.QMessageBox.critical(self, "Error", traceback.format_exc())
                 return
         QtWidgets.QMessageBox.information(self, "Save", "Done")
+
+    @QtCore.Slot()
+    def slot_BuildSubPlots(self):
+        lst = []
+        for it_lst in self.mdiArea.subWindowList():
+            if it_lst.widget().metaObject().className() == "TableWidget":
+                lst.append(it_lst)
+        dialog = BuildPlotDialog(self,lst)
+        vivisection = dialog.exec()
+        if vivisection == QtWidgets.QDialog.Accepted:
+            self.addPlot('s',dialog.getInput())
+        elif vivisection == QtWidgets.QDialog.Rejected:
+            pass
+        else:
+            QtWidgets.QMessageBox.critical(self, "Critical error", "QDialog: Unexpected result")
 
     def loadSubWindow(self, widget):
         window = self.mdiArea.addSubWindow(widget)
@@ -230,20 +274,36 @@ class MainWindow(QtWidgets.QMainWindow):
         window.resize(widget.geometry().width(), widget.geometry().height())
         window.show()
 
-    def addPlot(self):
-        w = self.mdiArea.activeSubWindow().widget()
-        if w.metaObject().className() == "TableWidget":
-            wl = w.get_Data()
-            plotWidget = PlotWidget(self, wl[1])
-            plotWidget.set_Data(wl[0])
-            self.loadSubWindow(plotWidget)
+    def addPlot(self, pattern=None, lst=None):
+        if pattern == 's':
+            data = []
+            windowList = self.mdiArea.subWindowList()
+            currentWindow = None
+            for it_lst in lst:
+                for it_wl in windowList:
+                    if it_wl.windowTitle() == it_lst:
+                        currentWindow = it_wl
+                        break
+                data.append(currentWindow.widget().get_AllData())
+            plotWidget = PlotWidget(self)
+            plotWidget.set_serialData(data)
+        else:
+            w = self.mdiArea.activeSubWindow().widget()
+            if w.metaObject().className() == "TableWidget":
+                wl = w.get_Data()
+                plotWidget = PlotWidget(self, wl[1])
+                plotWidget.set_Data(wl[0])
+        self.loadSubWindow(plotWidget)
 
     @QtCore.Slot()
     def loadPlot(self):
         self.addPlot()
 
-    def addTable(self, lst):
-        self.readData(lst)
+    def addTable(self, lst, pattern):
+        if pattern == 'f':
+            self.readData(lst)
+        elif pattern == 't':
+            self.openData(lst)
 
     @QtCore.Slot(str, pandas.DataFrame)
     def loadTable(self, name, data):
@@ -265,6 +325,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.worker.errorSignal.connect(self.errors_loadTable)
         self.worker.quit.connect(self.thread.quit)
         self.thread.start()
+
+    def openData(self, data):
+        try:
+            file_name = data[0]
+            data = pandas.read_csv(file_name, sep=data[1])
+        except Exception:
+            QtWidgets.QMessageBox.critical(self, "Error", traceback.format_exc())
+        else:
+            self.loadTable(file_name, data)
 
 
 class TableWidget(QtWidgets.QWidget):
@@ -313,6 +382,13 @@ class TableWidget(QtWidgets.QWidget):
             data[1].append(float(self.tableWidget.item(si[it*2+1].row(), 1).text()))
         return [data, self.name]
 
+    def get_AllData(self):
+        data = [[], []]
+        for i in range(self.tableWidget.rowCount()):
+            data[0].append(float(self.tableWidget.item(i,0).text()))
+            data[1].append(float(self.tableWidget.item(i,1).text()))
+        return data
+
     @QtCore.Slot()
     def showContextMenu(self, pos):
         table = self.sender()
@@ -321,20 +397,104 @@ class TableWidget(QtWidgets.QWidget):
         menu.addAction(self.actionPlot)
         menu.exec_(pos)
 
-    def Save(self,file):
+    def Save(self, file, delimiter):
         try:
             data = [[], []]
             for i in range(self.tableWidget.rowCount()):
                 data[0].append(float(self.tableWidget.item(i,0).text()))
                 data[1].append(float(self.tableWidget.item(i,1).text()))
             data = pandas.DataFrame({"two_theta": data[0], "intensity": data[1]})
-            data.to_csv(file,index=False,sep="\t",header=True)
+            data.to_csv(file,index=False,sep=delimiter,header=True)
         except Exception:
             QtWidgets.QMessageBox.critical(self, "Save", traceback.format_exc())
 
 
+class DialogOpenTable(QtWidgets.QDialog):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.resize(450, 200)
+        self.setWindowTitle("Open table")
+
+        self.sett = QtCore.QSettings(PROGRAM_PATH + "/settings.ini", QtCore.QSettings.IniFormat)
+
+        self.labelFile = QtWidgets.QLabel("File:")
+        self.lineEditFile = QtWidgets.QLineEdit()
+        self.lineEditFile.setText(self.sett.value("DialogOpenTable/file"))
+        self.pushButtonOpen = QtWidgets.QPushButton("Open")
+        self.pushButtonOpen.clicked.connect(self.slot_openFile)
+
+        self.labelDelimiter = QtWidgets.QLabel("Delimiter")
+        self.comboBoxDelimiter = QtWidgets.QComboBox()
+        self.comboBoxDelimiter.addItems(("Comma", "Tab step", "Semicolon", "Space"))
+        vivisection = self.sett.value("DialogOpenTable/delimiter")
+        if vivisection == ",":
+            self.comboBoxDelimiter.setCurrentIndex(0)
+        elif vivisection == "\t":
+            self.comboBoxDelimiter.setCurrentIndex(1)
+        elif vivisection == ";":
+            self.comboBoxDelimiter.setCurrentIndex(2)
+        elif vivisection == " ":
+            self.comboBoxDelimiter.setCurrentIndex(3)
+
+        self.buttonBox = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel)
+        self.buttonBox.accepted.connect(self.accept)
+        self.buttonBox.rejected.connect(self.reject)
+
+        self.horizontalBoxLayout_openFile = QtWidgets.QHBoxLayout()
+        self.horizontalBoxLayout_openFile.addWidget(self.labelFile)
+        self.horizontalBoxLayout_openFile.addWidget(self.lineEditFile)
+        self.horizontalBoxLayout_openFile.addWidget(self.pushButtonOpen)
+
+        self.horizontalBoxLayout_Delimiter = QtWidgets.QHBoxLayout()
+        self.horizontalBoxLayout_Delimiter.addWidget(self.labelDelimiter)
+        self.vBoxLayout_Delimiter = QtWidgets.QVBoxLayout()
+        self.vBoxLayout_Delimiter.addWidget(self.comboBoxDelimiter)
+        self.vBoxLayout_Delimiter.addSpacerItem(CustomSpacer('h'))
+        self.horizontalBoxLayout_Delimiter.addLayout(self.vBoxLayout_Delimiter)
+
+        self.verticalBoxLayout = QtWidgets.QVBoxLayout()
+        self.verticalBoxLayout.addSpacerItem(CustomSpacer('v'))
+        self.verticalBoxLayout.addLayout(self.horizontalBoxLayout_openFile)
+        self.verticalBoxLayout.addSpacerItem(CustomSpacer('v'))
+        self.verticalBoxLayout.addLayout(self.horizontalBoxLayout_Delimiter)
+        self.verticalBoxLayout.addSpacerItem(CustomSpacer('v'))
+        self.verticalBoxLayout.addWidget(self.buttonBox)
+
+        self.setLayout(self.verticalBoxLayout)
+
+    @QtCore.Slot()
+    def slot_openFile(self):
+        self.lineEditFile.setText(QtWidgets.QFileDialog.getOpenFileName(self, "Open file", self.sett.value("DialogOpenTable/file"), "All files(*.*);;CSV files(*.csv);;Text files(*.txt)")[0])
+
+    @QtCore.Slot()
+    def accept(self):
+        if self.lineEditFile.text() == "":
+            QtWidgets.QMessageBox.warning(self, "Warning", "The \"File\" field cannot be empty")
+            return
+
+        super().accept()
+
+    def getInput(self):
+        delimiter = None
+
+        vivisection = self.comboBoxDelimiter.currentIndex()
+        if vivisection == 0:
+            delimiter = ","
+        elif vivisection == 1:
+            delimiter = "\t"
+        elif vivisection == 2:
+            delimiter = ";"
+        elif vivisection == 3:
+            delimiter = " "
+
+        self.sett.setValue("DialogOpenTable/file", self.lineEditFile.text())
+        self.sett.setValue("DialogOpenTable/delimiter", delimiter)
+
+        return [self.lineEditFile.text(), delimiter]
+
+
 class PlotWidget(QtWidgets.QWidget):
-    def __init__(self, parent, title):
+    def __init__(self, parent, title=''):
         super().__init__(parent)
 
         global ResPlotWidgetID
@@ -358,7 +518,7 @@ class PlotWidget(QtWidgets.QWidget):
     def set_Data(self, data):
         self.sc.update_figure(data)
 
-    def set_serialData(self,listData):
+    def set_serialData(self, listData):
         self.sc.update_serialFigure(listData)
 
     def Save(self,file):
@@ -406,7 +566,7 @@ class PlotCanvas(plotCanvas):
 
         self.draw()
 
-    def update_serialFigure(self,listData):
+    def update_serialFigure(self, listData):
         self.axes.cla()
 
         for data in listData:
@@ -419,6 +579,41 @@ class PlotCanvas(plotCanvas):
 
         self.draw()
 
+
+class BuildPlotDialog(QtWidgets.QDialog):
+    def __init__(self, parent, lst):
+        super().__init__(parent)
+        self.resize(450, 200)
+        self.setWindowTitle("Plot")
+
+        self.vBoxLayout = QtWidgets.QVBoxLayout()
+
+        self.groupBox = QtWidgets.QGroupBox()
+        self.groupBox.setFlat(True)
+        scrollArea = QtWidgets.QScrollArea()
+        layout = QtWidgets.QVBoxLayout()
+        for it_lst in lst:
+            radioButton = QtWidgets.QCheckBox(it_lst.widget().windowTitle())
+            layout.addWidget(radioButton)
+        self.groupBox.setLayout(layout)
+        scrollArea.setWidget(self.groupBox)
+        scrollArea.setWidgetResizable(True)
+
+        self.buttonBox = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel)
+        self.buttonBox.accepted.connect(self.accept)
+        self.buttonBox.rejected.connect(self.reject)
+
+        self.vBoxLayout.addWidget(self.groupBox)
+        self.vBoxLayout.addWidget(self.buttonBox)
+
+        self.setLayout(self.vBoxLayout)
+
+    def getInput(self):
+        items =[]
+        for checkbox in self.groupBox.findChildren(QtWidgets.QCheckBox):
+            if checkbox.isChecked():
+                items.append(checkbox.text())
+        return items
 
 
 class AboutProgramDialog(QtWidgets.QDialog):
@@ -608,10 +803,31 @@ class DialogSave(QtWidgets.QDialog):
 
         self.vBoxLayout = QtWidgets.QVBoxLayout()
 
-        self.hBoxLayoutName = QtWidgets.QHBoxLayout()
+        if self.pattern == 'table' or self.pattern == 'plot':
+            self.hBoxLayoutName = QtWidgets.QHBoxLayout()
         self.hBoxLayoutPath = QtWidgets.QHBoxLayout()
         self.vBoxLayoutCustom = QtWidgets.QVBoxLayout()
         self.hBoxLayoutFormat = QtWidgets.QHBoxLayout()
+
+        if self.pattern == 'table' or self.pattern == 'tables':
+            self.hBoxLayoutDelimiter = QtWidgets.QHBoxLayout()
+            self.labelDelimiter = QtWidgets.QLabel("Delimiter")
+            self.comboBoxDelimiter = QtWidgets.QComboBox()
+            self.comboBoxDelimiter.addItems(("Comma", "Tab step", "Semicolon", "Space"))
+            vivisection = self.sett.value("DialogSave/delimiter")
+            if vivisection == ",":
+                self.comboBoxDelimiter.setCurrentIndex(0)
+            elif vivisection == "\t":
+                self.comboBoxDelimiter.setCurrentIndex(1)
+            elif vivisection == ";":
+                self.comboBoxDelimiter.setCurrentIndex(2)
+            elif vivisection == " ":
+                self.comboBoxDelimiter.setCurrentIndex(3)
+            self.vBoxLayoutDelimiter = QtWidgets.QVBoxLayout()
+            self.vBoxLayoutDelimiter.addWidget(self.comboBoxDelimiter)
+            self.vBoxLayoutDelimiter.addSpacerItem(CustomSpacer('h'))
+            self.hBoxLayoutDelimiter.addWidget(self.labelDelimiter)
+            self.hBoxLayoutDelimiter.addLayout(self.vBoxLayoutDelimiter)
 
         self.labelPath = QtWidgets.QLabel("Path")
         self.lineEditPath = QtWidgets.QLineEdit()
@@ -693,13 +909,27 @@ class DialogSave(QtWidgets.QDialog):
         self.vBoxLayout.addSpacerItem(CustomSpacer('v'))
         self.vBoxLayout.addLayout(self.hBoxLayoutFormat)
         self.vBoxLayout.addSpacerItem(CustomSpacer('v'))
+        if self.pattern == 'table' or self.pattern == 'tables':
+            self.vBoxLayout.addLayout(self.hBoxLayoutDelimiter)
+            self.vBoxLayout.addSpacerItem(CustomSpacer('v'))
         self.vBoxLayout.addWidget(self.buttonBox)
 
         self.setLayout(self.vBoxLayout)
 
     def getInput(self):
         self.sett.setValue("DialogSave/path", self.lineEditPath.text())
+        delimiter = None
         if self.pattern == 'table' or self.pattern == 'tables':
+            vivisection = self.comboBoxDelimiter.currentIndex()
+            if vivisection == 0:
+                delimiter = ","
+            elif vivisection == 1:
+                delimiter = "\t"
+            elif vivisection == 2:
+                delimiter = ";"
+            elif vivisection == 3:
+                delimiter = " "
+            self.sett.setValue("DialogSave/delimiter", delimiter)
             self.sett.setValue("DialogSave/format_table",self.comboBoxFormat.currentIndex())
         elif self.pattern == 'plot' or self.pattern == 'plots':
             self.sett.setValue("DialogSave/format_plot",self.comboBoxFormat.currentIndex())
@@ -707,14 +937,14 @@ class DialogSave(QtWidgets.QDialog):
         if self.pattern == 'table' or self.pattern == 'plot':
             self.sett.setValue("DialogSave/file_name", self.lineEditFileName.text())
             file = self.lineEditPath.text() + '/' + self.lineEditFileName.text() + self.comboBoxFormat.currentText().split('*')[-1][:-1]
-            return [self.comboBoxWindows.currentText(), file]
+            return [self.comboBoxWindows.currentText(), file, delimiter]
         elif self.pattern == 'tables' or self.pattern == 'plots':
             path = self.lineEditPath.text() + '/'
             files = []
             for checkbox in self.groupBox.findChildren(QtWidgets.QCheckBox):
                 if checkbox.isChecked():
                     files.append(checkbox.text())
-            return [path, files, self.comboBoxFormat.currentText().split('*')[-1][:-1]]
+            return [path, files, self.comboBoxFormat.currentText().split('*')[-1][:-1], delimiter]
 
     @QtCore.Slot()
     def slot_ButtonFileName(self):
@@ -774,7 +1004,7 @@ def main():
     splash.show()
 
     app.setApplicationName("FishX")
-    app.setApplicationVersion("1.0.1-1")
+    app.setApplicationVersion("1.0.2")
     app.setWindowIcon(QtGui.QIcon(PROGRAM_PATH + "/img/FishX.png"))
 
     win = MainWindow()
@@ -783,7 +1013,7 @@ def main():
     splash.finish(win)
 
     ####
-    win.slot_openFile()
+    # win.slot_openFile()
     ####
 
     sys.exit(app.exec_())
