@@ -1,6 +1,7 @@
 # FishX
 
-Analysis of diffraction data of a digital multimeter
+Analysis of diffraction data from digital multimeter data <br />
+*(DRON-2, Department of Solid State Physics, V. N. Karazin Kharkiv National University)*
 
 The following libraries are required to use this script:
 
