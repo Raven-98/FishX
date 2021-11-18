@@ -645,7 +645,7 @@ class AboutProgramDialog(QtWidgets.QDialog):
         tabsWidget = QtWidgets.QTabWidget()
 
         tabAbout = QtWidgets.QWidget()
-        labelAbout = QtWidgets.QLabel("Analysis of diffraction data of a digital multimeter")
+        labelAbout = QtWidgets.QLabel("<html><head/><body><p>Analysis of diffraction data from digital multimeter data<br><i>(DRON-2, Department of Solid State Physics, V. N. Karazin Kharkiv National University)</i></span></p></body></html>")
         labelAbout.setWordWrap(True)
         labelAboutOwner = QtWidgets.QLabel("<html><head/><body><p>© Raven-98, 2021</p></body></html>")
         labelAboutWEB = QtWidgets.QLabel("<html><head/><body><p><a href=\"https://github.com/Raven-98/FishX\"><span style=\" text-decoration: underline; color:#2980b9;\">https://github.com/Raven-98/FishX</span></a></p></body></html>")
